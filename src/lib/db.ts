@@ -26,3 +26,10 @@ export function getPool(): pg.Pool {
   globalForPool.cashbucktPool ??= createPool(requireEnv("DATABASE_URL"));
   return globalForPool.cashbucktPool;
 }
+
+/** Close and forget the shared pool (shutdown, tests). The next getPool() recreates it. */
+export async function closePool(): Promise<void> {
+  const pool = globalForPool.cashbucktPool;
+  globalForPool.cashbucktPool = undefined;
+  await pool?.end();
+}

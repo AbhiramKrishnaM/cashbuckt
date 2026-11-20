@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",
+    globalSetup: ["tests/global-setup.ts"],
     // Integration tests share one Postgres; run files sequentially.
     fileParallelism: false,
   },

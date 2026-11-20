@@ -3,25 +3,36 @@ import { existsSync } from "node:fs";
 import pg from "pg";
 
 /**
- * Integration tests run against the dev Postgres from compose.dev.yml:
- *   docker compose -f docker-compose.yml -f compose.dev.yml up -d postgres migrate
- * Override with TEST_DATABASE_URL to point elsewhere.
+ * Integration tests run against an isolated `cashbuckt_test` database inside
+ * the dev Postgres from compose.dev.yml (recreated by tests/global-setup.ts):
+ *   docker compose -f docker-compose.yml -f compose.dev.yml up -d postgres
+ * Override with TEST_DATABASE_URL to point at a database you manage.
  */
-export function testDatabaseUrl(): string {
-  if (process.env.TEST_DATABASE_URL) return process.env.TEST_DATABASE_URL;
+export const TEST_DB_NAME = "cashbuckt_test";
+
+function devServerUrl(database: string): string {
   if (existsSync(".env")) process.loadEnvFile(".env");
   const { POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB } = process.env;
   if (!POSTGRES_USER || !POSTGRES_PASSWORD || !POSTGRES_DB) {
     throw new Error("Set TEST_DATABASE_URL or POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB in .env");
   }
   const port = process.env.DEV_PG_PORT ?? "55432";
-  return `postgres://${POSTGRES_USER}:${encodeURIComponent(POSTGRES_PASSWORD)}@127.0.0.1:${port}/${POSTGRES_DB}`;
+  return `postgres://${POSTGRES_USER}:${encodeURIComponent(POSTGRES_PASSWORD)}@127.0.0.1:${port}/${database}`;
+}
+
+/** The dev database, used only to (re)create the test database. */
+export function adminDatabaseUrl(): string {
+  return devServerUrl(process.env.POSTGRES_DB ?? "cashbuckt");
+}
+
+export function testDatabaseUrl(): string {
+  return process.env.TEST_DATABASE_URL ?? devServerUrl(TEST_DB_NAME);
 }
 
 let pool: pg.Pool | undefined;
 
 export function testPool(): pg.Pool {
-  pool ??= new pg.Pool({ connectionString: testDatabaseUrl(), max: 2 });
+  pool ??= new pg.Pool({ connectionString: testDatabaseUrl(), max: 5 });
   return pool;
 }
 
@@ -40,6 +51,13 @@ export async function withRollback<T>(fn: (client: pg.PoolClient) => Promise<T>)
     await client.query("ROLLBACK");
     client.release();
   }
+}
+
+/** For test files that commit data: wipe all app tables (test database only). */
+export async function truncateAll(): Promise<void> {
+  await testPool().query(
+    "TRUNCATE transactions, month_buckets, unparsed_sms, merchant_rules, push_subscriptions RESTART IDENTITY CASCADE",
+  );
 }
 
 export const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -70,12 +88,20 @@ let smsCounter = 0;
 export async function insertTxn(
   c: pg.PoolClient,
   bucketId: number,
-  fields: { txn_type?: string; channel?: string; amount?: string; sms?: string } = {},
+  fields: { txn_type?: string; channel?: string; amount?: string; sms?: string; bank?: string } = {},
 ): Promise<void> {
   const sms = fields.sms ?? `test sms ${Date.now()} ${smsCounter++}`;
   await c.query(
-    `INSERT INTO transactions (bucket_id, txn_type, channel, amount, raw_sms, sms_hash)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [bucketId, fields.txn_type ?? "OUT", fields.channel ?? "UPI", fields.amount ?? "10.00", sms, sha256(sms)],
+    `INSERT INTO transactions (bucket_id, txn_type, channel, amount, raw_sms, sms_hash, bank)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      bucketId,
+      fields.txn_type ?? "OUT",
+      fields.channel ?? "UPI",
+      fields.amount ?? "10.00",
+      sms,
+      sha256(sms),
+      fields.bank ?? "UNKNOWN",
+    ],
   );
 }

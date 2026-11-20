@@ -4,7 +4,7 @@
  */
 
 /** Variables the server cannot start without. Later changes append to this list. */
-export const REQUIRED_ENV = ["DATABASE_URL"] as const;
+export const REQUIRED_ENV = ["DATABASE_URL", "WEBHOOK_SECRET"] as const;
 
 export type RequiredEnvKey = (typeof REQUIRED_ENV)[number];
 
