@@ -1,0 +1,7 @@
+# Automatic HTTPS (Let's Encrypt) for {$DOMAIN}; HTTP is redirected to HTTPS.
+# With DOMAIN=localhost, Caddy uses its internal CA instead (local testing).
+{$DOMAIN} {
+	encode zstd gzip
+	header -Server
+	reverse_proxy app:3000
+}

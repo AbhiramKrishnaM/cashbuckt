@@ -1,0 +1,73 @@
+# CashBuckt production stack.
+# Local dev: docker compose -f docker-compose.yml -f compose.dev.yml up -d postgres migrate
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      TZ: Asia/Kolkata
+      PGTZ: Asia/Kolkata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # WARNING: never add `ports:` here. Postgres must stay on the internal
+    # Docker network only; Docker-published ports bypass ufw.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: applies pending db/migrations/*.sql, then exits. Idempotent.
+  migrate:
+    image: ghcr.io/amacneil/dbmate:2.38.2
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DBMATE_MIGRATIONS_DIR: /db/migrations
+      DBMATE_NO_DUMP_SCHEMA: "true"
+    volumes:
+      - ./db:/db:ro
+    command: ["--wait", "up"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      # Containers always reach Postgres by service name; overrides the
+      # host-oriented DATABASE_URL in .env (used only for `npm run dev`).
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    # No published ports: only Caddy talks to the app.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,7 @@
+# Local development overlay. NEVER use on the droplet.
+#   docker compose -f docker-compose.yml -f compose.dev.yml up -d postgres migrate
+# Published on 55432 by default to avoid clashing with a local Homebrew Postgres.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${DEV_PG_PORT:-55432}:5432"
