@@ -46,15 +46,17 @@
 - [x] 8.1 Write `docs/iphone-shortcuts.md` (three automations "Rs", "INR", "debited"; OTP-stop guard; Get Contents of URL with header and `{"sms": Shortcut Input}`; Run Immediately / no confirmation; curl smoke test); verify the curl command in it works against the local stack
 - [x] 8.2 Write `docs/sms-review.md` (SQL to list unreviewed `unparsed_sms`, mark reviewed, and steps to add a parser and fixture from a real SMS); verify each SQL statement runs on the dev DB
 
-## 9. Real formats & go-live (owner + me)
+## 9. Go-live & real formats (owner + me)
 
-- [ ] 9.1 Owner provides at least one masked real SMS for each of: ICICI NEFT salary, ICICI ACH/EMI debit, SBI UPI debit, SBI credit, Utkarsh debit, Kotak savings debit, ICICI card spend, Kotak card spend, OneCard spend, and a card payment received; replace the representative fixtures, set `confirmed: true`, adjust parsers until all tests pass
-- [ ] 9.2 Deploy to the droplet (requires `setup-infrastructure` tasks 6.2–6.3), set the new env vars, and run the curl smoke test against `https://<DOMAIN>`; verify `saved` and `duplicate` responses
-- [ ] 9.3 Set up the three iPhone automations per `docs/iphone-shortcuts.md`; make one real ₹1–10 UPI payment; verify it appears with `channel = 'UPI'` and `needs_note = true`, and that any non-transaction SMS lands in `ignored` or `unparsed_sms`
-- [ ] 9.4 Go-live check on the salary: when the Nov 26–29 ICICI salary arrives, verify it is stored as `SALARY` in bucket `2026-12` and that bucket `2026-12` was auto-created
+Go-live does not wait for real samples. Only the ICICI UPI debit format is confirmed. Every other format is representative, and anything that doesn't match is captured in `unparsed_sms` and fixed after it arrives.
+
+- [ ] 9.1 Deploy to the droplet (requires `setup-infrastructure` tasks 6.2–6.3), set `WEBHOOK_SECRET`, `OWNER_NAME_PATTERNS`, `OWN_CARD_SUFFIXES` and `SALARY_MIN_AMOUNT` in `.env`, and run the curl smoke test against `https://<DOMAIN>`; verify `saved` and `duplicate` responses
+- [ ] 9.2 Set up the three iPhone automations per `docs/iphone-shortcuts.md`; make one real ₹1–10 UPI payment; verify it appears with `channel = 'UPI'` and `needs_note = true`, and that any non-transaction SMS lands in `ignored` or `unparsed_sms`
+- [ ] 9.3 Salary go-live check: when the Nov 26–29 ICICI salary arrives, verify it is stored as `SALARY` in an auto-created bucket `2026-12`. If it lands in `unparsed_sms` instead, add its masked text as a `confirmed: true` fixture, fix `parsers/icici.ts` until tests pass, redeploy, and replay it per `docs/sms-review.md` section 4; verify it then shows as `SALARY` in `2026-12`
+- [ ] 9.4 First-week format review (through Dec 5, 2026): check `unparsed_sms` daily per `docs/sms-review.md`. For every real SMS received from a source still marked `confirmed: false` (whether it parsed or not), add its masked text as a `confirmed: true` fixture and fix the parser if needed; verify `npm test` passes after each fix, every unreviewed `unparsed_sms` row is reviewed, and record in `tests/fixtures/sms.ts` which sources are still unconfirmed
 
 ## Workflow follow-up
 
 - Archive `setup-infrastructure` before archiving this change. This change's `transaction-storage` delta uses MODIFIED, which needs that spec to exist.
-- Archive this change with `/opsx:archive` after 9.4 passes.
+- Archive this change with `/opsx:archive` after 9.4 (the first-week review) is done. Sources not seen that week stay `confirmed: false` and are handled as they arrive, per `docs/sms-review.md`.
 - Next change: `add-note-prompt`, which must delay pushes by about 2 minutes and re-check `needs_note` (design D8).

@@ -106,7 +106,7 @@ Real unmasked samples go in the gitignored `sms-samples/`. The parser test suite
 
 ## Risks / Trade-offs
 
-- [Representative formats for SBI, Utkarsh, Kotak and the cards don't match the real SMS] → Unrecognized SMS are captured, not dropped. A task collects at least one real SMS per source before go-live, and a review query (`docs/sms-review.md`) lists unparsed rows. A missed day is recoverable from the stored text.
+- [Representative formats for SBI, Utkarsh, Kotak and the cards don't match the real SMS] → Unrecognized SMS are captured, not dropped. The first week after go-live includes a daily review of `unparsed_sms` (`docs/sms-review.md`), and each real SMS received becomes a confirmed fixture. A missed day is recoverable from the stored text.
 - [The "Rs" trigger sends non-financial SMS containing "Rs" (offers, bills) to the server] → They're dropped as noise or land in `unparsed_sms`. Promotional senders can be blocked in the Shortcut later. OTPs are filtered on the phone.
 - [False self-transfer pairing (paying someone ₹500 while a ₹500 refund arrives in another account)] → Both sides must be different savings accounts, the same amount, and within 15 minutes. That's rare, and the cost is just a missing note prompt.
 - [ICICI changes its SMS wording] → The anchored regex fails, the SMS becomes unrecognized (visible) rather than misparsed (silent).
