@@ -1,0 +1,40 @@
+schema: spec-driven
+
+# Project context: constraints that guide every OpenSpec artifact.
+# Full product blueprint lives in ../cashbuckt.md (source of truth for intent).
+context: |
+  CashBuckt is a single-user personal cash-flow tracker. No multi-tenancy, no user accounts table.
+  Input is raw Indian bank SMS POSTed by iOS Shortcuts automations; there is no manual transaction entry in v1.
+  All dates and month boundaries use Asia/Kolkata (IST). month_key format is YYYY-MM.
+  Amounts are INR, stored as NUMERIC(12,2); never use floats for money.
+  Salary rule: a SALARY credit received on the 25th-31st of month N belongs to month N+1's bucket.
+  Month buckets are auto-created on first transaction; balances must stay correct when late-month debits
+  land in month N after month N+1 already exists.
+  Noise SMS (OTP, reminders, "due on", scheduled, declined) must return 200 OK and not be stored.
+  Ingestion must be idempotent (SHA-256 hash of raw SMS); Shortcuts may retry.
+  Only manual UPI/card debits trigger a Web Push asking "What was this for?"; credits and EMIs are silent.
+  Must work as an iOS Home Screen PWA (standalone, HTTPS, Web Push via VAPID); no native app, no Apple dev account.
+  Stack: Next.js App Router + Tailwind, PostgreSQL 16, Docker Compose, Caddy, single small DigitalOcean droplet.
+  Security: webhook requires X-Webhook-Secret header; dashboard/admin behind auth; Postgres never publicly exposed.
+  Hard deadline: ingestion + bucketing + salary carryover must be live before the Nov 26-29, 2026 salary credit.
+
+rules:
+  proposal:
+    - Always state what is out of scope
+  specs:
+    - SMS parsing requirements must include concrete example SMS strings as scenarios
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Include a test task for every parsing or bucketing rule
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

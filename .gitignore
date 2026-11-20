@@ -1,0 +1,72 @@
+# ── Dependencies ───────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ── Next.js / build output ─────────────────────────────────
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+
+# ── Testing / coverage ─────────────────────────────────────
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# ── Logs ───────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Secrets & environment (never commit) ───────────────────
+# Holds DATABASE_URL, WEBHOOK_SECRET, VAPID private key, AI API keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── Database dumps & backups (contain real bank SMS data) ──
+backups/
+*.sql.gz
+*.dump
+*.backup
+*.age
+*.gpg
+
+# ── Docker local data volumes ──────────────────────────────
+pgdata/
+postgres-data/
+caddy_data/
+caddy_config/
+docker-compose.override.yml
+
+# ── Real SMS samples (keep only masked fixtures in git) ────
+sms-samples/
+*.private.*
+
+# ── Claude Code local settings (shared commands/skills stay tracked) ──
+.claude/settings.local.json
+
+# ── OS / editor ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
